@@ -6,8 +6,7 @@ my language is kinda forthless
 **speed face**`
 
 **"one can implement a forth in a weekend"**
- -- a wise man
-And he was right.
+ -- a wise man said; and he was right.
 
 ---
 
@@ -28,10 +27,12 @@ And he was right.
 ### 1. Compile a kindafl source to Lua
 
 ```bash
-lua kindafl.lua c <source.kindafl> <output.lua>
+lua(5.2|5.3|5.4) kindafl.lua (c|m) <source.kindafl> <output.lua>
 ```
 
-- **`c`**: Compile mode
+- **`c`**: Compile mode,
+OR
+- **`m`**: Module compile mode
 - **`<source.kindafl>`**: Path to your kindafl source file
 - **`<output.lua>`**: Where to write the generated Lua code
 
