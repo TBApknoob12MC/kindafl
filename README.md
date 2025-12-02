@@ -20,7 +20,7 @@ my language is kinda forthless
 - **IO:** Read/write files, input from user.
 - **REPL:** Interactive shell to play with the language.
 - **Tiny standard library:** Just enough to make kfl work.
-- **Explicit lua interop:** Can call lua functions, but one should provide an interface for it to access the stack.
+- **lua interop:** Can call lua functions, but one should provide an interface for it to access the stack.
 ---
 
 ## Usage
@@ -53,16 +53,16 @@ At the REPL, type your kindafl code line by line. Enter `q` to quit.
 ## Kindafl Language 
 
 ```
-l" std.lua " # include lua file std.lua : should be included at top of the main source file
+l" std " # include lua file std.lua : should be included at top of the main source file
 c" comment " # comment
 : x 1 ; # word/function named x that pushes 1 to stack
 1 2 + # push 1 and 2, pop them and add, push final result
 1 4 ! # store 1 at key 4
 4 @ # fetch value at key 4 and push - here : 1
 s" hi " # string
-l" another_file.lua " # include another lua source file named another_file
+l" another_file " # include another lua source file named another_file.lua
 m"module" # include another kfl file
-a_lua_function # call lus functions
+a_lua_function # call lua functions
 ```
 ---
 

@@ -61,8 +61,8 @@ local function tstatement(cur)
     [":"] = "function ",
     [";"] = "end",
     ["\""] = "",
-    ["read"] = "local r = io.open(pop(stack):match('%S+'),'r')\npush(stack,r:read(pop(stack):match('*a')))\nr:close()",
-    ["write"] = "local w = io.open(pop(stack):match('%S+'),'w')\nw:write(pop(stack))\nw:close()",
+    ["read"] = "local r = io.open(pop(stack),'r')\npush(stack,r:read('*a'))\nr:close()",
+    ["write"] = "local w = io.open(pop(stack),'w')\nw:write(pop(stack))\nw:close()",
     ["inp"] = "push(stack,io.read())",
     ["cat"] = "push(stack,table.concat({tostring(pop(stack)),tostring(pop(stack))}))",
     ["match"] = "push(stack,pop(stack):match(pop(stack)))",
@@ -89,37 +89,34 @@ local function tstatement(cur)
       local tmp = str_acc
       str_acc = ""
       state = "statement"
-      return "push(stack, \""..tmp.."\")\n"
+      return "push(stack, \""..tmp:gsub("%f[\n ] ", "").."\")\n"
     end
     str_acc = str_acc .." "..cur
     return ""
   elseif state == "lod" then
     if cur == "\"" then
-      local tmp = lib_acc
+      local tmp = lib_acc:gsub("%f[\n ] ", "")
       lib_acc = ""
       state = "statement"
-      local f = io.open(tmp, 'r')
+      local f = io.open(tmp..".lua", 'r')
       local dat = f:read('*a')
       f:close()
       return dat.."\n"
     end
-    lib_acc = lib_acc..cur
+    lib_acc = lib_acc.." "..cur
     return ""
   end
 end
 
-local function tline(line)
-  local ret_val = {}
-  for v in string.gmatch(line, '%S+') do
-    table.insert(ret_val, tstatement(v))
-  end
-  return table.concat(ret_val)
-end
-
 local function tcode(str)
   local ret_val = {}
+  local line_ret = {}
   for line in string.gmatch(str, '[^\n]+') do
-    table.insert(ret_val, tline(line))
+    for v in string.gmatch(line, '%S+') do
+      table.insert(line_ret, tstatement(v))
+    end
+    table.insert(ret_val,table.concat(line_ret))
+    line_ret = {}
   end
   return table.concat(ret_val)
 end
