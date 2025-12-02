@@ -53,13 +53,14 @@ At the REPL, type your kindafl code line by line. Enter `q` to quit.
 ## Kindafl Language 
 
 ```
+l" std.lua " # include lua file std.lua : should be included at top of the main source file
 c" comment " # comment
 : x 1 ; # word/function named x that pushes 1 to stack
 1 2 + # push 1 and 2, pop them and add, push final result
 1 4 ! # store 1 at key 4
 4 @ # fetch value at key 4 and push - here : 1
 s" hi " # string
-l" std.lua " # include lua file std.lua
+l" another_file.lua " # include another lua source file named another_file
 m"module" # include another kfl file
 a_lua_function # call lus functions
 ```
