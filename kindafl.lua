@@ -1,44 +1,4 @@
-local state, str_acc, lib_acc, imported_modules, export, init_code = "statement", "", "", {}, {}, [[
-stack, mem, lib = {}, {}, {}
-function dump(do_mem)
-  local iter, tbl, init
-  if do_mem then
-    iter, tbl, init = pairs(mem)
-  else
-    iter, tbl, init = ipairs(stack)
-  end
-  local acc = {}
-  for k, v in iter, tbl, init do
-    if do_mem then
-      table.insert(acc, tostring(k).." : "..tostring(v).." ")
-    else
-      table.insert(acc, tostring(v).." ")
-    end
-  end
-  table.insert(stack, table.concat(acc))
-end
-
-function d()
-  dump(false)
-  print('stack: '..table.remove(stack))
-end
-
-function m()
-  dump(true)
-  print('mem: '..table.remove(stack))
-end
-
-function push(t,v)
-  table.insert(t,v)
-end
-
-function pop(t)
-  if #t < 1 then return 0 end
-  return table.remove(t)
-end
-
-]]
-
+local state, str_acc, lib_acc, imported_modules, export = "statement", "", "", {}, {}
 local function preprocess(code)
   local output = {}
   local i = 1
@@ -101,20 +61,21 @@ local function tstatement(cur)
     [":"] = "function ",
     [";"] = "end",
     ["\""] = "",
-    ["io_read"] = "local r = io.open(pop(stack):match('%S+'),'r')\npush(stack,r:read(pop(stack):match('%S+')))\nr:close()",
-    ["io_write"] = "local w = io.open(pop(stack):match('%S+'),'w')\nw:write(pop(stack))\nw:close()",
+    ["read"] = "local r = io.open(pop(stack):match('%S+'),'r')\npush(stack,r:read(pop(stack):match('*a')))\nr:close()",
+    ["write"] = "local w = io.open(pop(stack):match('%S+'),'w')\nw:write(pop(stack))\nw:close()",
     ["inp"] = "push(stack,io.read())",
     ["cat"] = "push(stack,table.concat({tostring(pop(stack)),tostring(pop(stack))}))",
+    ["match"] = "push(stack,pop(stack):match(pop(stack)))",
     ["rl"] = "load(pop(stack))()"
   }
   
   if state == "statement" then
     if actions[cur] then return actions[cur] .. "\n" end
-    if cur == "s\"" then
+    if cur == 's"' then
       state = "string"
       return ""
     end
-    if cur == "l\"" then
+    if cur == 'l"' then
       state = "lod"
       return ""
     end
@@ -163,23 +124,7 @@ local function tcode(str)
   return table.concat(ret_val)
 end
 
-local function compile(c)
-  return table.concat({init_code, tcode(c)})
-end
-
 if arg[1] == "c" then
-  if arg[2] and arg[3] then
-    local inp = io.open(arg[2], 'r')
-    local pp = preprocess(inp:read('*a'))
-    inp:close()
-    local lua_code = compile(pp)
-    local out = io.open(arg[3], "w")
-    out:write(lua_code)
-    out:close()
-  else
-    io.write("please provide both source and output file.")
-  end
-elseif arg[1] == "m" then
   if arg[2] and arg[3] then
     local inp = io.open(arg[2], 'r')
     local pp = preprocess(inp:read('*a'))
@@ -191,9 +136,18 @@ elseif arg[1] == "m" then
   else
     io.write("please provide both source and output file.")
   end
+elseif arg[1] == "p" then
+  if arg[2] and arg[3] then
+    local inp = io.open(arg[2], 'r')
+    local pp = preprocess(inp:read('*a'))
+    inp:close()
+    local out = io.open(arg[3], "w")
+    out:write(pp)
+    out:close()
+  else
+    io.write("please provide both source and output file.")
+  end
 elseif arg[1] == "r" then
-  print(init_code)
-  load(init_code)()
   if arg[2] then
     local inp = io.open(arg[2], 'r')
     local pp = preprocess(inp:read('*a'))
@@ -213,17 +167,17 @@ elseif arg[1] == "r" then
   end
 else
   print([[
-  kindaforthless compiler/repl:c
-      -> compile source to lua :
-        <kindafl> (c|m) <input.kindafl> <output.kindafl>
+  kindaforthless compiler/repl:
+      p -> preprocess source:
+        <kindafl> input.kindafl> <output.kindafl> 
+      c -> compile source to lua :
+        <kindafl> c <input.kindafl> <output.kindafl>
       r -> kindafl read-eval-print-loop (can take a file as an entry):
         <kindafl> r <optional_entry.kindafl>
         
   my language is kinda forth less *speed face*
   ]])
 end
-
-export.init_code = init_code
 
 function export.preprocess(str)
   return preprocess(str)
