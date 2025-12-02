@@ -14,12 +14,13 @@ my language is kinda forthless
 
 - **Stack-based execution:** Operates on values via stack manipulation.
 - **Arithmetic and logical ops:** `+`, `-`, `*`, `/`, `and`, `or`, `not`, `=`, `<`, `>`, etc.
-- **Memory table:** Store/load variables via `!` and `@`.
+- **Memory table:** Store/load values via `!` and `@`.
 - **Strings and lua code:** Push strings (`s" hello "`) and include lua code from files (`l" filename "`).
 - **Module import:** `m"modulename"` includes other `.kindafl` scripts.
 - **IO:** Read/write files, input from user.
 - **REPL:** Interactive shell to play with the language.
-
+- **Tiny standard library:** Just enough to make kfl work.
+- **Explicit lua interop:** Can call lua functions, but one should provide an interface for it to access the stack.
 ---
 
 ## Usage
@@ -27,14 +28,14 @@ my language is kinda forthless
 ### 1. Compile a kindafl source to Lua
 
 ```bash
-lua(5.2|5.3|5.4) kindafl.lua (c|m) <source.kindafl> <output.lua>
+lua(5.2|5.3|5.4) kindafl.lua (p|c) <source> <output>
 ```
 
 - **`c`**: Compile mode,
 OR
-- **`m`**: Module compile mode
-- **`<source.kindafl>`**: Path to your kindafl source file
-- **`<output.lua>`**: Where to write the generated Lua code
+- **`p`**: Preprocess only
+- **`<source>`**: Path to your kindafl source file
+- **`<output>`**: Where to write the generated Lua or kfl code
 
 ### 2. Use the REPL (interactive shell)
 
@@ -53,13 +54,14 @@ At the REPL, type your kindafl code line by line. Enter `q` to quit.
 
 ```
 c" comment " # comment
-: x 1 ; # word/function
+: x 1 ; # word/function named x that pushes 1 to stack
 1 2 + # push 1 and 2, pop them and add, push final result
 1 4 ! # store 1 at key 4
 4 @ # fetch value at key 4 and push - here : 1
 s" hi " # string
-l" file.lua " # include file
+l" std.lua " # include lua file std.lua
 m"module" # include another kfl file
+a_lua_function # call lus functions
 ```
 ---
 
@@ -67,7 +69,6 @@ m"module" # include another kfl file
 
 You can use the module and call exported functions:
 
-- `init_code`: initial Lua setup string
 - `preprocess(source_str)`: preprocess source
 - `comp(code_str)`: transpile source to Lua code string
 
