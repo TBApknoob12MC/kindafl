@@ -54,7 +54,7 @@ At the REPL, type your kindafl code line by line. Enter `q` to quit.
 
 ```
 l" std " # include lua file std.lua : should be included at top of the main source file
-c" comment " # comment
+c"comment" # comment
 : x 1 ; # word/function named x that pushes 1 to stack
 1 2 + # push 1 and 2, pop them and add, push final result
 1 4 ! # store 1 at key 4
@@ -71,7 +71,7 @@ a_lua_function # call lua functions
 You can use the module and call exported functions:
 
 - `preprocess(source_str)`: preprocess source
-- `comp(code_str)`: transpile source to Lua code string
+- `tcode(code_str)`: transpile source to Lua code string
 
 ---
 
