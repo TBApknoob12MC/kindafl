@@ -89,13 +89,13 @@ local function tstatement(cur)
       local tmp = str_acc
       str_acc = ""
       state = "statement"
-      return "push(stack, \""..tmp:gsub("%f[\n ] ", "").."\")\n"
+      return "push(stack, \""..tmp:gsub("^ ", "").."\")\n"
     end
     str_acc = str_acc .." "..cur
     return ""
   elseif state == "lod" then
     if cur == "\"" then
-      local tmp = lib_acc:gsub("%f[\n ] ", "")
+      local tmp = lib_acc:gsub("^ ", "")
       lib_acc = ""
       state = "statement"
       local f = io.open(tmp..".lua", 'r')
