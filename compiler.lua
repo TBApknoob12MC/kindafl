@@ -1,5 +1,7 @@
-local state, str_acc, lib_acc, imported_modules, export = "statement", "", "", {}, {}
-function export.preprocess(code)
+local compiler = {}
+compiler.__index = compiler
+function compiler.new() return setmetatable({state = "statement", str_acc = "", lib_acc = "", imported_modules = {}},compiler) end
+function compiler:preprocess(code)
   local output = {}
   local i = 1
   while i <= #code do
@@ -11,13 +13,13 @@ function export.preprocess(code)
         i = i + 1
       end
       i = i + 1
-      if not imported_modules[modname] then
-        imported_modules[modname] = true
+      if not self.imported_modules[modname] then
+        self.imported_modules[modname] = true
         local f, err = io.open(modname..'.kindafl','r')
         if not f then error("Module "..modname.." not found: "..err) end
         local modcode = f:read("*a")
         f:close()
-        modcode = preprocess(modcode)
+        modcode = self:preprocess(modcode)
         table.insert(output, modcode)
       end
     elseif code:sub(i, i+1) == 'c"' then
@@ -34,7 +36,7 @@ function export.preprocess(code)
   return table.concat(output)
 end
 
-local function tstatement(cur)
+function compiler:tstatement(cur)
   local actions = {
     ["+"] = "push(stack, pop(stack) + pop(stack))",
     ["-"] = "push(stack, pop(stack) - pop(stack))",
@@ -65,53 +67,52 @@ local function tstatement(cur)
     ["write"] = "local w = io.open(pop(stack),'w')\nw:write(pop(stack))\nw:close()",
     ["inp"] = "push(stack,io.read())",
     ["cat"] = "push(stack,table.concat({tostring(pop(stack)),tostring(pop(stack))}))",
-    ["match"] = "push(stack,pop(stack):match(pop(stack)))",
-    ["rl"] = "load(pop(stack))()"
+    ["match"] = "push(stack,pop(stack):match(pop(stack)))"
   }
   
-  if state == "statement" then
+  if self.state == "statement" then
     if actions[cur] then return actions[cur] .. "\n"
     elseif cur == 's"' then
-      state = "string"
+      self.state = "string"
       return ""
     elseif cur == 'l"' then
-      state = "lod"
+      self.state = "lod"
       return ""
     elseif tonumber(cur) then
       return "push(stack, "..tonumber(cur)..")\n"
     else
       return cur.."()\n"
     end
-  elseif state == "string" then
+  elseif self.state == "string" then
     if cur == "\"" then
-      local tmp = str_acc
-      str_acc = ""
-      state = "statement"
+      local tmp = self.str_acc
+      self.str_acc = ""
+      self.state = "statement"
       return "push(stack, \""..tmp:gsub("^ ", "").."\")\n"
     end
-    str_acc = str_acc .." "..cur
+    self.str_acc = self.str_acc .." "..cur
     return ""
-  elseif state == "lod" then
+  elseif self.state == "lod" then
     if cur == "\"" then
-      local tmp = lib_acc:gsub("^ ", "")
-      lib_acc = ""
-      state = "statement"
+      local tmp = self.lib_acc:gsub("^ ", "")
+      self.lib_acc = ""
+      self.state = "statement"
       local f = io.open(tmp..".lua", 'r')
       local dat = f:read('*a')
       f:close()
       return dat.."\n"
     end
-    lib_acc = lib_acc.." "..cur
+    self.lib_acc = self.lib_acc.." "..cur
     return ""
   end
 end
 
-function export.tcode(str)
+function compiler:tcode(str)
   local ret_val = {}
   local line_ret = {}
   for line in string.gmatch(str, '[^\n]+') do
     for v in string.gmatch(line, '%S+') do
-      table.insert(line_ret, tstatement(v))
+      table.insert(line_ret, self:tstatement(v))
     end
     table.insert(ret_val,table.concat(line_ret))
     line_ret = {}
@@ -119,4 +120,4 @@ function export.tcode(str)
   return table.concat(ret_val)
 end
 
-return export
+return compiler

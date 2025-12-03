@@ -1,10 +1,11 @@
 local kfl = require('compiler')
+local comp = kfl.new()
 if arg[1] == "c" then
   if arg[2] and arg[3] then
     local inp = io.open(arg[2], 'r')
-    local pp = kfl.preprocess(inp:read('*a'))
+    local pp = comp:preprocess(inp:read('*a'))
     inp:close()
-    local lua_code = kfl.tcode(pp)
+    local lua_code = comp:tcode(pp)
     local out = io.open(arg[3], "w")
     out:write(lua_code)
     out:close()
@@ -14,7 +15,7 @@ if arg[1] == "c" then
 elseif arg[1] == "p" then
   if arg[2] and arg[3] then
     local inp = io.open(arg[2], 'r')
-    local pp = kfl.preprocess(inp:read('*a'))
+    local pp = comp:preprocess(inp:read('*a'))
     inp:close()
     local out = io.open(arg[3], "w")
     out:write(pp)
@@ -26,9 +27,9 @@ elseif arg[1] == "r" then
   dbg = false
   if arg[2] then
     local inp = io.open(arg[2], 'r')
-    local pp = kfl.preprocess(inp:read('*a'))
+    local pp = comp:preprocess(inp:read('*a'))
     inp:close()
-    local lua_code = kfl.tcode(pp)
+    local lua_code = comp:tcode(pp)
     print(lua_code)
     load(lua_code)()
   end
@@ -37,8 +38,8 @@ elseif arg[1] == "r" then
     if repl_inp == "q" then break 
     elseif repl_inp == "dbg" then dbg = not dbg
     else
-      local pp = kfl.preprocess(repl_inp)
-      local lua_code = kfl.tcode(pp)
+      local pp = comp:preprocess(repl_inp)
+      local lua_code = comp:tcode(pp)
       print(lua_code)
       load(lua_code)()
       if dbg then load('d()')() end

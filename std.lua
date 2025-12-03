@@ -33,7 +33,7 @@ function push(t,v)
 end
 
 function pop(t)
-  if #t < 1 then return 0 end
+  if #t < 1 then error("stack underflow") end
   return table.remove(t)
 end
 

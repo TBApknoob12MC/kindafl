@@ -70,6 +70,7 @@ a_lua_function # call lua functions
 
 You can use the module and call exported functions:
 
+- `new()`: create new compiler obj
 - `preprocess(source_str)`: preprocess source
 - `tcode(code_str)`: transpile source to Lua code string
 
