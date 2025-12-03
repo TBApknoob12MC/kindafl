@@ -20,7 +20,7 @@ function compiler:preprocess(code)
         local modcode = f:read("*a")
         f:close()
         modcode = self:preprocess(modcode)
-        table.insert(output, modcode)
+        table.insert(output, modcode.."\n")
       end
     elseif code:sub(i, i+1) == 'c"' then
       i = i + 2
@@ -38,24 +38,26 @@ end
 
 function compiler:tstatement(cur)
   local actions = {
-    ["+"] = "push(stack, pop(stack) + pop(stack))",
-    ["-"] = "push(stack, pop(stack) - pop(stack))",
-    ["*"] = "push(stack, pop(stack) * pop(stack))",
-    ["/"] = "push(stack, pop(stack) / pop(stack))",
-    ["="] = "push(stack, pop(stack) == pop(stack))",
-    [">"] = "push(stack, pop(stack) > pop(stack))",
-    ["<"] = "push(stack, pop(stack) < pop(stack))",
-    ["and"] = "push(stack, pop(stack) and pop(stack))",
-    ["or"] = "push(stack, pop(stack) or pop(stack))",
+    ["+"] = "local b,a = pop(stack), pop(stack)\npush(stack, a + b )",
+    ["-"] = "local b,a = pop(stack), pop(stack)\npush(stack, a - b )",
+    ["*"] = "local b,a = pop(stack), pop(stack)\npush(stack, a * b )",
+    ["/"] = "local b,a = pop(stack), pop(stack)\npush(stack, a / b )",
+    ["="] = "local b,a = pop(stack), pop(stack)\npush(stack, a == b )",
+    [">"] = "local b,a = pop(stack), pop(stack)\npush(stack, a > b )",
+    ["<"] = "local b,a = pop(stack), pop(stack)\npush(stack, a < b )",
+    ["and"] = "local b,a = pop(stack), pop(stack)\npush(stack, a and b )",
+    ["or"] = "local b,a = pop(stack), pop(stack)\npush(stack, a or b )",
     ["not"] = "push(stack, not pop(stack))",
     ["."] = "print(pop(stack))",
     ["dump"] = "dump(false)",
     ["mem"] = "dump(true)",
     ["dup"] = "push(stack, stack[#stack])",
-    ["swap"] = "local x, y = pop(stack), pop(stack)\npush(stack, x)\npush(stack, y)",
+    ["swap"] = "local b,a = pop(stack), pop(stack)\npush(stack, b)\npush(stack, a)",
     ["drop"] = "pop(stack)",
     ["do"] = "for i = pop(stack), pop(stack) - 1 do",
+    ["wt"] = "while true do",
     ["i"] = "push(stack, i)",
+    ["br"] = "break",
     ["if"] = "if pop(stack) == true then",
     ["else"] = "else",
     ["!"] = "mem[pop(stack)] = pop(stack)",
