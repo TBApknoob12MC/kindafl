@@ -2,7 +2,8 @@ local kfl = require('compiler')
 local comp = kfl:new()
 if arg[1] == "c" then
   if arg[2] and arg[3] then
-    local inp = io.open(arg[2], 'r')
+    local inp, err = io.open(arg[2], 'r')
+    if not inp then error("error opening source file: "..err) ; return end
     local pp = comp:preprocess(inp:read('*a'))
     inp:close()
     local lua_code = comp:tcode(pp)
@@ -14,7 +15,8 @@ if arg[1] == "c" then
   end
 elseif arg[1] == "p" then
   if arg[2] and arg[3] then
-    local inp = io.open(arg[2], 'r')
+    local inp, err = io.open(arg[2], 'r')
+    if not inp then error("error opening source file: "..err) ; return end
     local pp = comp:preprocess(inp:read('*a'))
     inp:close()
     local out = io.open(arg[3], "w")
@@ -26,7 +28,8 @@ elseif arg[1] == "p" then
 elseif arg[1] == "r" then
   dbg = false
   if arg[2] then
-    local inp = io.open(arg[2], 'r')
+    local inp, err= io.open(arg[2], 'r')
+    if not inp then error("error opening source file: "..err) ; return end
     local pp = comp:preprocess(inp:read('*a'))
     inp:close()
     local lua_code = comp:tcode(pp)

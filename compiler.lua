@@ -22,12 +22,28 @@ function compiler:preprocess(code)
         modcode = self:preprocess(modcode)
         table.insert(output, modcode.."\n")
       end
-    elseif code:sub(i, i+1) == 'c"' then
-      i = i + 2
-      while i <= #code and code:sub(i, i) ~= '"' do
+    elseif code:sub(i, i) == '(' then
+      i = i + 1
+      while i <= #code and code:sub(i, i) ~= ')' do
         i = i + 1
       end
       table.insert(output, "")
+    elseif code:sub(i,i+1) == 's"' then
+      i = i + 2
+      local acc = ""
+      while i <= #code and code:sub(i,i) ~= '"' do
+        acc =  acc..code:sub(i,i)
+        i = i + 1
+      end
+      table.insert(output,'s" '..acc..' ')
+    elseif code:sub(i,i+1) == 'l"' then
+      i = i + 2
+      local acc = ""
+      while i <= #code and code:sub(i,i) ~= '"' do
+        acc = acc..code:sub(i,i)
+        i = i + 1
+      end
+      table.insert(output,'l" '..acc..' ')
     else
       table.insert(output, code:sub(i, i))
       i = i + 1
@@ -67,10 +83,11 @@ function compiler:tstatement(cur)
     [":"] = "function ",
     [";"] = "end",
     ["\""] = "",
+    [")"] = "",
     ["read"] = "local r = io.open(pop(stack),'r')\npush(stack,r:read('*a'))\nr:close()",
     ["write"] = "local w = io.open(pop(stack),'w')\nw:write(pop(stack))\nw:close()",
     ["inp"] = "push(stack,io.read())",
-    ["cat"] = "push(stack,table.concat({tostring(pop(stack)),tostring(pop(stack))}))",
+    ["cat"] = "push(stack,tostring(pop(stack))..tostring(pop(stack)))",
     ["match"] = "push(stack,pop(stack):match(pop(stack)))"
   }
   
