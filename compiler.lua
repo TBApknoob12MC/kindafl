@@ -27,7 +27,6 @@ function compiler:preprocess(code)
       while i <= #code and code:sub(i, i) ~= ')' do
         i = i + 1
       end
-      table.insert(output, "")
     elseif code:sub(i,i+1) == 's"' then
       i = i + 2
       local acc = ""
@@ -87,7 +86,7 @@ function compiler:tstatement(cur)
     ["read"] = "local r = io.open(pop(stack),'r')\npush(stack,r:read('*a'))\nr:close()",
     ["write"] = "local w = io.open(pop(stack),'w')\nw:write(pop(stack))\nw:close()",
     ["inp"] = "push(stack,io.read())",
-    ["cat"] = "push(stack,tostring(pop(stack))..tostring(pop(stack)))",
+    ["cat"] = "local b,a = pop(stack),pop(stack)\npush(stack,tostring(a)..tostring(b))",
     ["match"] = "push(stack,pop(stack):match(pop(stack)))"
   }
   
