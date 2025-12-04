@@ -5,13 +5,14 @@ kinda forth, less - forth-ish language that compiles to lua
 my language is kinda forthless
 **speed face**`
 
+Maintaining full compatibility with forth wasn't, isn't and won't be any objective of kindaforthless.
+
 **"one can implement a forth in a weekend"**
  -- a wise man said; and he was right.
 
 ---
 
 ## Features
-
 - **Stack-based execution:** Operates on values via stack manipulation.
 - **Arithmetic and logical ops:** `+`, `-`, `*`, `/`, `and`, `or`, `not`, `=`, `<`, `>`, etc.
 - **Memory table:** Store/load values via `!` and `@`.
@@ -64,15 +65,6 @@ l" another_file " c"include another lua source file named another_file.lua"
 m"module" c"include another kfl file"
 a_lua_function c"call lua functions"
 ```
----
-
-## require the compiler in your code:
-
-You can use the module and call exported functions:
-
-- `new()`: create new compiler obj
-- `preprocess(source_str)`: preprocess source
-- `tcode(code_str)`: transpile source to Lua code string
 
 ---
 
@@ -81,4 +73,3 @@ You can use the module and call exported functions:
 MPL-2.0
 
 ---
-

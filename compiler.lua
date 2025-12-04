@@ -1,6 +1,6 @@
 local compiler = {}
 compiler.__index = compiler
-function compiler.new() return setmetatable({state = "statement", str_acc = "", lib_acc = "", imported_modules = {}},compiler) end
+function compiler:new() return setmetatable({state = "statement", str_acc = "", lib_acc = "", imported_modules = {}},compiler) end
 function compiler:preprocess(code)
   local output = {}
   local i = 1
@@ -58,6 +58,8 @@ function compiler:tstatement(cur)
     ["wt"] = "while true do",
     ["i"] = "push(stack, i)",
     ["br"] = "break",
+    ["begin"] = "repeat",
+    ["until"] = "until pop(stack)",
     ["if"] = "if pop(stack) == true then",
     ["else"] = "else",
     ["!"] = "mem[pop(stack)] = pop(stack)",

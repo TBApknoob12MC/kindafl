@@ -1,5 +1,5 @@
 local kfl = require('compiler')
-local comp = kfl.new()
+local comp = kfl:new()
 if arg[1] == "c" then
   if arg[2] and arg[3] then
     local inp = io.open(arg[2], 'r')
