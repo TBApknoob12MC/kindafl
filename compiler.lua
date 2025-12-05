@@ -30,11 +30,28 @@ function compiler:preprocess(code)
     elseif code:sub(i,i+1) == 's"' then
       i = i + 2
       local acc = ""
-      while i <= #code and code:sub(i,i) ~= '"' do
-        acc =  acc..code:sub(i,i)
-        i = i + 1
+      while i <= #code  do
+        local char = code:sub(i, i)
+        if char == '"' then
+          i = i + 1
+          break
+        elseif char == "\\" then
+          i = i + 1
+          local next_char = code:sub(i, i)
+          if next_char == '"' then
+            acc = acc .. '\\"'
+          elseif next_char == '\\' then
+            acc = acc .. '\\\\'
+          else
+            acc = acc .. "\\" .. next_char
+          end
+          i = i + 1
+        else
+          acc = acc .. char
+          i = i + 1
+        end
       end
-      table.insert(output,'s" '..acc..' ')
+      table.insert(output,'s" '..acc..' "')
     elseif code:sub(i,i+1) == 'l"' then
       i = i + 2
       local acc = ""
@@ -52,22 +69,23 @@ function compiler:preprocess(code)
 end
 
 function compiler:tstatement(cur)
+  local var_var = "local b,a = pop(stack), pop(stack)\n"
   local actions = {
-    ["+"] = "local b,a = pop(stack), pop(stack)\npush(stack, a + b )",
-    ["-"] = "local b,a = pop(stack), pop(stack)\npush(stack, a - b )",
-    ["*"] = "local b,a = pop(stack), pop(stack)\npush(stack, a * b )",
-    ["/"] = "local b,a = pop(stack), pop(stack)\npush(stack, a / b )",
-    ["="] = "local b,a = pop(stack), pop(stack)\npush(stack, a == b )",
-    [">"] = "local b,a = pop(stack), pop(stack)\npush(stack, a > b )",
-    ["<"] = "local b,a = pop(stack), pop(stack)\npush(stack, a < b )",
-    ["and"] = "local b,a = pop(stack), pop(stack)\npush(stack, a and b )",
-    ["or"] = "local b,a = pop(stack), pop(stack)\npush(stack, a or b )",
+    ["+"] = var_var.."push(stack, a + b )",
+    ["-"] = var_var.."push(stack, a - b )",
+    ["*"] = var_var.."push(stack, a * b )",
+    ["/"] = var_var.."push(stack, a / b )",
+    ["="] = var_var.."push(stack, a == b )",
+    [">"] = var_var.."push(stack, a > b )",
+    ["<"] = "push(stack, a < b )",
+    ["and"] = var_var.."push(stack, a and b )",
+    ["or"] = var_var.."push(stack, a or b )",
     ["not"] = "push(stack, not pop(stack))",
     ["."] = "print(pop(stack))",
     ["dump"] = "dump(false)",
     ["mem"] = "dump(true)",
     ["dup"] = "push(stack, stack[#stack])",
-    ["swap"] = "local b,a = pop(stack), pop(stack)\npush(stack, b)\npush(stack, a)",
+    ["swap"] = var_var.."push(stack, b)\npush(stack, a)",
     ["drop"] = "pop(stack)",
     ["do"] = "for i = pop(stack), pop(stack) - 1 do",
     ["wt"] = "while true do",
@@ -85,9 +103,10 @@ function compiler:tstatement(cur)
     [")"] = "",
     ["read"] = "local r = io.open(pop(stack),'r')\npush(stack,r:read('*a'))\nr:close()",
     ["write"] = "local w = io.open(pop(stack),'w')\nw:write(pop(stack))\nw:close()",
-    ["inp"] = "push(stack,io.read())",
-    ["cat"] = "local b,a = pop(stack),pop(stack)\npush(stack,tostring(a)..tostring(b))",
-    ["match"] = "push(stack,pop(stack):match(pop(stack)))"
+    ["strin"] = "push(stack,tostring(io.read()))",
+    ["numin"] = "push(stack,tonumber(io.read()))",
+    ["cat"] = var_var.."push(stack,tostring(a)..tostring(b))",
+    ["match"] = var_var.."push(stack,tostring(a):match(tostring(b)))"
   }
   
   if self.state == "statement" then

@@ -33,7 +33,6 @@ elseif arg[1] == "r" then
     local pp = comp:preprocess(inp:read('*a'))
     inp:close()
     local lua_code = comp:tcode(pp)
-    print(lua_code)
     load(lua_code)()
   end
   while true do
@@ -43,7 +42,7 @@ elseif arg[1] == "r" then
     else
       local pp = comp:preprocess(repl_inp)
       local lua_code = comp:tcode(pp)
-      print(lua_code)
+      if dbg then print(lua_code) end
       load(lua_code)()
       if dbg then load('d()')() end
     end
