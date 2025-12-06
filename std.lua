@@ -1,21 +1,17 @@
 stack, mem, lib, f = {}, {}, {}, {}
 mem[1] = 1
 function dump(do_mem)
-  local iter, tbl, init
+  local d = ""
   if do_mem then
-    iter, tbl, init = pairs(mem)
-  else
-    iter, tbl, init = ipairs(stack)
-  end
-  local acc = {}
-  for k, v in iter, tbl, init do
-    if do_mem then
-      table.insert(acc, tostring(k).." : "..tostring(v).." ")
-    else
-      table.insert(acc, tostring(v).." ")
+    local acc = {}
+    for k, v in pairs(mem) do
+      table.insert(acc, tostring(k).." : "..tostring(v))
     end
+    d = table.concat(acc,", ")
+  else
+    d = table.concat(stack," ")
   end
-  table.insert(stack, table.concat(acc))
+  table.insert(stack, d)
 end
 
 function d()

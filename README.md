@@ -29,12 +29,10 @@ Maintaining full compatibility with forth wasn't, isn't and won't be any objecti
 ### 1. Compile a kindafl source to Lua
 
 ```bash
-lua(5.2|5.3|5.4) kindafl.lua (p|c) <source> <output>
+lua(5.2|5.3|5.4) kindafl.lua c <source> <output>
 ```
 
-- **`c`**: Compile mode,
-OR
-- **`p`**: Preprocess only
+- **`c`**: Compile mode
 - **`<source>`**: Path to your kindafl source file
 - **`<output>`**: Where to write the generated Lua or kfl code
 
@@ -45,7 +43,7 @@ lua kindafl.lua r          # start empty REPL
 lua kindafl.lua r <file>   # start REPL after running a kindafl file
 ```
 
-- **`r`**: Read-Eval-Print-Loop
+- **`r`**: Read-Eval-Print-Loop mode
 
 At the REPL, type your kindafl code line by line. Enter `q` to quit.
 

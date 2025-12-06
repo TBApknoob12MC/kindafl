@@ -13,18 +13,6 @@ if arg[1] == "c" then
   else
     io.write("please provide both source and output file.")
   end
-elseif arg[1] == "p" then
-  if arg[2] and arg[3] then
-    local inp, err = io.open(arg[2], 'r')
-    if not inp then error("error opening source file: "..err) ; return end
-    local pp = comp:preprocess(inp:read('*a'))
-    inp:close()
-    local out = io.open(arg[3], "w")
-    out:write(pp)
-    out:close()
-  else
-    io.write("please provide both source and output file.")
-  end
 elseif arg[1] == "r" then
   dbg = false
   if arg[2] then
@@ -49,9 +37,7 @@ elseif arg[1] == "r" then
   end
 else
   print([[
-  kindaforthless compiler/repl:
-      p -> preprocess source:
-        <kindafl> input.kindafl> <output.kindafl> 
+  kindaforthless cli:
       c -> compile source to lua :
         <kindafl> c <input.kindafl> <output.kindafl>
       r -> kindafl read-eval-print-loop (can take a file as an entry):
