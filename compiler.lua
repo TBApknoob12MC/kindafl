@@ -1,8 +1,14 @@
+local op_table = require('op_table')
 local compiler = {}
 compiler.__index = compiler
 
+function compiler:gensym()
+  self.gensym_counter = self.gensym_counter + 1
+  return "_t"..self.gensym_counter
+end
+
 function compiler:new()
-  return setmetatable({imported_modules = {}}, compiler)
+  return setmetatable({imported_modules = {},gensym_counter = 0}, compiler)
 end
 
 function compiler:flatten(into, list)
@@ -13,11 +19,9 @@ function compiler:preprocess(code)
   local tokens = {}
   local i = 1
   local n = #code
-  
   local function emit(t)
     tokens[#tokens+1] = t
   end
-  
   while i <= n do
     local c = code:sub(i,i)
     if code:sub(i,i+1) == 'm"' then
@@ -31,7 +35,7 @@ function compiler:preprocess(code)
       if not self.imported_modules[name] then
         self.imported_modules[name] = true
         local f = assert(io.open(name .. ".kindafl","r"),
-                 "Module "..name.." not found")
+          "Module "..name.." not found")
         local text = f:read("*a")
         f:close()
         local subtoks = self:preprocess(text)
@@ -46,7 +50,7 @@ function compiler:preprocess(code)
           i = i + 1
           break
         elseif ch == "\\" then
-          buff[#buff+1] = code:sub(i, i+1)
+          buff[#buff+1] = code:sub(i,i+1)
           i = i + 2
         else
           buff[#buff+1] = ch
@@ -73,85 +77,242 @@ function compiler:preprocess(code)
       i = i + 1
     else
       local start = i
-      while i <= n and not code:sub(i,i):match("%s") and
-      code:sub(i,i) ~= "(" and
-      code:sub(i,i+1) ~= 'm"' and
-      code:sub(i,i+1) ~= 's"' and
-      code:sub(i,i+1) ~= 'l"' do
+      while i <= n  and not code:sub(i,i):match("%s") and code:sub(i,i) ~= "(" and code:sub(i,i+1) ~= 'm"' and code:sub(i,i+1) ~= 's"' and code:sub(i,i+1) ~= 'l"' do
         i = i + 1
       end
-      emit(code:sub(start, i-1))
+      local buff = code:sub(start, i-1)
+      if tonumber(buff) then
+        emit({type="number", value=tonumber(buff)})
+      elseif op_table()[buff] then
+        emit({type="word", value=buff})
+      else
+        emit({type="x", value=buff})
+      end
     end
   end
   return tokens
 end
 
-function compiler:op_table()
-  local var = "local b,a = pop(stack), pop(stack)\n"
-  return {
-    ["+"] = var.."push(stack, a + b )",
-    ["-"] = var.."push(stack, a - b )",
-    ["*"] = var.."push(stack, a * b )",
-    ["/"] = var.."push(stack, a / b )",
-    ["="] = var.."push(stack, a == b )",
-    [">"] = var.."push(stack, a > b )",
-    ["<"] = var.."push(stack, a < b )",
-    ["and"] = var.."push(stack, a and b )",
-    ["or"] = var.."push(stack, a or b )",
-    ["not"] = "push(stack, not pop(stack))",
-    ["."] = "print(pop(stack))",
-    ["dump"] = "dump(false)",
-    ["mem"] = "dump(true)",
-    ["dup"] = "push(stack, stack[#stack])",
-    ["swap"] = var.."push(stack, b)\npush(stack, a)",
-    ["drop"] = "pop(stack)",
-    ["do"] = "for i = pop(stack), pop(stack) - 1 do",
-    ["wt"] = "while true do",
-    ["i"] = "push(stack, i)",
-    ["br"] = "break",
-    ["begin"] = "repeat",
-    ["until"] = "until pop(stack)",
-    ["if"] = "if pop(stack) then",
-    ["else"] = "else",
-    [":"] = "function ",
-    [";"] = "end",
-    ["!"] = "mem[pop(stack)] = pop(stack)",
-    ["@"] = "push(stack, mem[pop(stack)])",
-    ["read"] = "local r = io.open(pop(stack),'r')\npush(stack,r:read('*a'))\nr:close()",
-    ["write"] = "local w = io.open(pop(stack),'w')\nw:write(pop(stack))\nw:close()",
-    ["strin"] = "push(stack, tostring(io.read()))",
-    ["numin"] = "push(stack, tonumber(io.read()))",
-    ["cat"] = var.."push(stack, tostring(a) .. tostring(b))",
-    ["match"] = var.."push(stack, tostring(a):match(tostring(b)))"
-  }
-end
-
 function compiler:tcode(tokens)
   local out = {}
-  local ops = self:op_table()
+  local ops = op_table()
+  local vstack = {}
+  local lazy_mem = {}
+  local vpush_words = {
+    ["dup"] = true, ["swap"] = true, ["@"] = true,
+    ["read"] = true, ["strin"] = true, ["numin"] = true
+  }
+  local function materialize(expr)
+    if expr.kind == "const" or expr.kind == "number" then
+      return tostring(expr.value)
+    elseif expr.kind == "string" then
+      return string.format("%q", expr.value)
+    elseif expr.kind == "var" then
+      return expr.value
+    elseif expr.kind == "op" then
+      local left = materialize(expr.left)
+      local right = expr.right and materialize(expr.right) or ""
+      if expr.op == ".." then
+        return string.format("(%s .. %s)", left, right)
+      elseif expr.op == "not" then
+        return string.format("(not %s)", left)
+      else
+        return string.format("(%s %s %s)", left, expr.op, right)
+      end
+    end
+    error("can't materialize expr : " .. tostring(expr.kind))
+  end
   local function emit(s)
     out[#out+1] = s
   end
+  local function flush()
+    for _,expr in ipairs(vstack) do
+      emit("push(stack, " .. materialize(expr) .. ")\n")
+    end
+    vstack = {}
+  end
   for _,tok in ipairs(tokens) do
-    if type(tok) == "table" and tok.type == "string" then
-      local v = tok.value:gsub('"','\"')
-      emit('push(stack, "'..v..'")\n')
-    elseif type(tok) == "table" and tok.type == "load" then
+    if tok.type == "string" then
+      vstack[#vstack+1] = {kind="string", value=tok.value}
+    elseif tok.type == "load" then
+      flush()
       local path = tok.value .. ".lua"
       local f = assert(io.open(path,"r"),"Cannot load library: "..path)
       emit(f:read("*a").."\n")
       f:close()
-    else
-      local w = tok
-      if tonumber(w) then
-        emit("push(stack, "..tonumber(w)..")\n")
-      elseif ops[w] then
-        emit(ops[w] .. "\n")
+    elseif tok.type == "number" then
+      vstack[#vstack+1] = {kind="const", value=tok.value}
+    elseif tok.type == "word" then
+      local w = tok.value
+      local skip_vpush_var = false
+      if w=="+" or w=="-" or w=="*" or w=="/"
+      or w=="=" or w==">" or w=="<" then
+        local b = table.remove(vstack)
+        local a = table.remove(vstack)
+        if not (a and b) then
+          if b then vstack[#vstack+1] = b end
+          if a then vstack[#vstack+1] = a end
+          flush()
+          emit(ops[w].."\n")
+        elseif a.kind=="const" and b.kind=="const" then
+          local op = w
+          local res =
+            (op=="+" and (a.value+b.value)) or
+            (op=="-" and (a.value-b.value)) or
+            (op=="*" and (a.value*b.value)) or
+            (op=="/" and (a.value/b.value)) or
+            (op=="=" and (a.value==b.value)) or
+            (op==">" and (a.value>b.value)) or
+            (op=="<" and (a.value<b.value))
+          vstack[#vstack+1] = {kind="const", value = res}
+        else
+          vstack[#vstack+1] = {kind="op", op=w, left=a, right=b}
+        end
+      elseif w=="and" or w=="or" then
+        local b = table.remove(vstack)
+        local a = table.remove(vstack)
+        if not (a and b) then
+          if b then vstack[#vstack+1] = b end
+          if a then vstack[#vstack+1] = a end
+          flush()
+          emit(ops[w].."\n")
+        elseif a.kind=="const" and b.kind=="const" then
+          vstack[#vstack+1] = {
+            kind="const",
+            value = (w=="and") and (a.value and b.value) or (a.value or b.value)
+          }
+        else
+          vstack[#vstack+1] = {kind="op", op=w, left=a, right=b}
+        end
+      elseif w == "cat" then
+        local b = table.remove(vstack)
+        local a = table.remove(vstack)
+        if not (a and b) then
+          if b then vstack[#vstack+1] = b end
+          if a then vstack[#vstack+1] = a end
+          flush()
+          emit(ops["cat"].."\n")
+        elseif a.kind=="string" and b.kind=="string" then
+          vstack[#vstack+1] = {kind="string", value = a.value .. b.value}
+        else
+          vstack[#vstack+1] = {kind="op", op="..", left=a, right=b}
+        end
+      elseif w == "not" then
+        local a = table.remove(vstack)
+        if not a then
+          flush()
+          emit(ops["not"].."\n")
+        elseif a.kind=="const" then
+          vstack[#vstack+1] = {kind="const", value = not a.value}
+        else
+          vstack[#vstack+1] = {kind="op", op="not", left=a}
+        end
+      elseif w == "dup" then
+        if #vstack == 0 then
+          flush()
+          emit(ops["dup"].."\n")
+        else
+          local top = vstack[#vstack]
+          vstack[#vstack+1] = top
+        end
+      elseif w == "swap" then
+        if #vstack < 2 then
+          flush()
+          emit(ops["swap"].."\n")
+        else
+          vstack[#vstack], vstack[#vstack-1] =
+            vstack[#vstack-1], vstack[#vstack]
+        end
+      elseif w == "drop" then
+        if #vstack == 0 then
+          flush()
+          emit(ops["drop"].."\n")
+        else
+          table.remove(vstack)
+        end
+      elseif w == "!" then
+        local val = table.remove(vstack)
+        local idx = table.remove(vstack)
+        if not (idx and val) then
+          if val then vstack[#vstack+1] = val end
+          if idx then vstack[#vstack+1] = idx end
+          flush()
+          emit(ops["!"].."\n")
+        elseif idx.kind=="const" and val.kind=="const" then
+          lazy_mem[idx.value] = val.value
+        else
+          flush()
+          emit(ops["!"].."\n")
+        end
+      elseif w == "@" then
+        local idx = table.remove(vstack)
+        if not idx then
+          flush()
+          emit(ops["@"].."\n")
+          skip_vpush_var = true
+        elseif idx.kind=="const" and lazy_mem[idx.value] ~= nil then
+          vstack[#vstack+1] =
+            {kind="const", value = lazy_mem[idx.value]}
+          skip_vpush_var = true
+        else
+          local var = self:gensym()
+          emit("local "..var.." = mem["..materialize(idx).."]\n")
+          vstack[#vstack+1] = {kind="var", value=var}
+          skip_vpush_var = true
+        end
+      elseif vpush_words[w] then
+        local var = self:gensym()
+        local lua_expr = nil
+        local path = nil
+        if w == "strin" then
+          lua_expr = "tostring(io.read())"
+        elseif w == "numin" then
+          lua_expr = "tonumber(io.read())"
+        elseif w == "read" then
+          path = table.remove(vstack)
+          if not path then
+            flush()
+            emit(ops["read"].."\n")
+            skip_vpush_var = true
+          else
+            lua_expr = string.format("(function(r) local t = r:read('*a'); r:close(); return t end)(io.open(%s,'r'))", materialize(path))
+          end
+        elseif w == "dup" then
+          if #vstack == 0 then
+              flush()
+              emit(ops[w].."\n")
+              skip_vpush_var = true
+          else
+             lua_expr = "stack[#stack]"
+          end
+        else
+          flush()
+          emit(ops[w].."\n")
+          skip_vpush_var = true
+        end
+        if not skip_vpush_var then
+          emit("local "..var.." = "..lua_expr.."\n")
+          vstack[#vstack+1] = {kind="var", value=var}
+        end
+      elseif w=="." or w=="dump" or w=="mem" or w=="write" or w=="do" or w=="i" or w=="br" or w=="begin" or w=="until" or w=="if" or w=="else" or w==":" or w==";" then
+        flush()
+        emit(ops[w].."\n")
       else
-        emit(w .. "()\n")
+        flush()
+        local var = self:gensym()
+        emit("local "..var.." = "..w .. "()\n")
+        vstack[#vstack+1] = {kind="var", value=var}
       end
+    elseif tok.type == "x" then
+      flush()
+      local var = self:gensym()
+      emit("local "..var.." = "..tok.value .. "()\n")
+      vstack[#vstack+1] = {kind="var", value=var}
+    else
+      error("unknown token type: "..tostring(tok.type))
     end
   end
+  flush()
   return table.concat(out)
 end
 

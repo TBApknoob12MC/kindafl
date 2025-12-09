@@ -1,0 +1,37 @@
+return function ()
+  local var = "local b,a = pop(stack), pop(stack)\n"
+  return {
+    ["+"] = var.."push(stack, a + b )",
+    ["-"] = var.."push(stack, a - b )",
+    ["*"] = var.."push(stack, a * b )",
+    ["/"] = var.."push(stack, a / b )",
+    ["="] = var.."push(stack, a == b )",
+    [">"] = var.."push(stack, a > b )",
+    ["<"] = var.."push(stack, a < b )",
+    ["and"] = var.."push(stack, a and b )",
+    ["or"] = var.."push(stack, a or b )",
+    ["not"] = "push(stack, not pop(stack))",
+    ["."] = "print(pop(stack))",
+    ["dump"] = "dump(false)",
+    ["mem"] = "dump(true)",
+    ["dup"] = "push(stack, stack[#stack])",
+    ["swap"] = var.."push(stack, b)\npush(stack, a)",
+    ["drop"] = "pop(stack)",
+    ["do"] = "for i = pop(stack), pop(stack) - 1 do",
+    ["i"] = "push(stack, i)",
+    ["br"] = "break",
+    ["begin"] = "repeat",
+    ["until"] = "until pop(stack)",
+    ["if"] = "if pop(stack) then",
+    ["else"] = "else",
+    [":"] = "function ",
+    [";"] = "end",
+    ["!"] = "mem[pop(stack)] = pop(stack)",
+    ["@"] = "push(stack, mem[pop(stack)])",
+    ["read"] = "local r = io.open(pop(stack),'r')\npush(stack,r:read('*a'))\nr:close()",
+    ["write"] = "local w = io.open(pop(stack),'w')\nw:write(pop(stack))\nw:close()",
+    ["strin"] = "push(stack, tostring(io.read()))",
+    ["numin"] = "push(stack, tonumber(io.read()))",
+    ["cat"] = var.."push(stack, tostring(a) .. tostring(b))"
+  }
+end
