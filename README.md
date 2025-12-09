@@ -21,6 +21,7 @@ Maintaining full compatibility with forth wasn't, isn't and won't be any objecti
 - **IO:** Read/write files, input from user.
 - **REPL:** Interactive shell to play with the language.
 - **Tiny standard library:** Just enough to make kfl work.
+- **Lazy eval:** Lazy evaluation and other cool stuff for optimized code generation
 - **lua interop:** Can call lua functions, but one should provide an interface for it to access the stack.
 ---
 
