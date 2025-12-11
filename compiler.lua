@@ -8,7 +8,7 @@ function compiler:gensym()
 end
 
 function compiler:new()
-  return setmetatable({imported_modules = {}, gensym_counter = 0}, compiler)
+  return setmetatable({imported_modules = {}, gensym_counter = 0, macro_list = {}}, compiler)
 end
 
 function compiler:flatten(into, list)
@@ -31,6 +31,23 @@ function compiler:preprocess(code)
         local text = f:read("*a"); f:close()
         self:flatten(tokens, self:preprocess(text))
       end
+    elseif code:sub(i,i+1) == "x:" then
+      i = i + 2 ; local buff = {}
+      while i <= n do
+        local ch = code:sub(i,i)
+        if ch == " " or ch == ";" then break end
+        if ch == "\\" then buff[#buff+1] = code:sub(i+1,i+1); i = i + 2
+        else buff[#buff+1] = ch; i = i + 1 end
+      end
+      local name = table.concat(buff); buff = {}
+      while i <= n and code:sub(i,i):match("%s") and code:sub(i,i) ~= ";" do i = i + 1 end
+      while i <= n do
+        local ch = code:sub(i,i)
+        if ch == ";" then i = i + 1; break
+        elseif ch == "\\" then buff[#buff+1] = code:sub(i+1,i+1); i = i + 2
+        else buff[#buff+1] = ch; i = i + 1 end 
+      end
+      self.macro_list[name] = self:preprocess(table.concat(buff))
     elseif code:sub(i,i+1) == 's"' then
       i = i + 2
       local buff = {}
@@ -59,6 +76,7 @@ function compiler:preprocess(code)
       local buff = code:sub(start, i-1)
       if tonumber(buff) then emit({type="number", value=tonumber(buff)})
       elseif op_table()[buff] then emit({type="word", value=buff})
+      elseif self.macro_list[buff] then self:flatten(tokens,self.macro_list[buff])
       else emit({type="x", value=buff}) end
     end
   end
