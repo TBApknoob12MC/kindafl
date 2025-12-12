@@ -22,7 +22,7 @@ Maintaining full compatibility with forth wasn't, isn't and won't be any objecti
 - **REPL:** Interactive shell to play with the language.
 - **Tiny standard library:** Just enough to make kfl work.
 - **Macros:** Words, but they get replaced with its content at compile time.
-- **Lazy eval:** Lazy evaluation and other cool stuff for optimized code generation.
+- **Optimized codegen:** Cool stuff for optimized code generation.
 - **lua interop:** Can call lua functions, but one should provide an interface for it to access the stack.
 ---
 

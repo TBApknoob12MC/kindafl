@@ -72,7 +72,7 @@ function compiler:preprocess(code)
       i = i + 1
     else
       local start = i
-      while i <= n and not code:sub(i,i):match("%s") and code:sub(i,i) ~= "(" and code:sub(i,i+1) ~= 'm"' and code:sub(i,i+1) ~= 's"' and code:sub(i,i+1) ~= 'l"' do i = i + 1 end
+      while i <= n and not code:sub(i,i):match("%s") and code:sub(i,i) ~= "(" and code:sub(i,i+1) ~= 'm"' and code:sub(i,i+1) ~= 's"' and code:sub(i,i+1) ~= 'l"' and code:sub(i,i+1) ~= 'x:' do i = i + 1 end
       local buff = code:sub(start, i-1)
       if tonumber(buff) then emit({type="number", value=tonumber(buff)})
       elseif op_table()[buff] then emit({type="word", value=buff})
@@ -112,9 +112,11 @@ function compiler:tcode(tokens)
       emit(f:read("*a").."\n"); f:close()
     elseif tok.type == "number" then vstack[#vstack+1] = {kind="const", value=tok.value}
     elseif tok.type == "word" then
-      local w, b, a, skip_vpush_var = tok.value, table.remove(vstack), table.remove(vstack), false
+      local w, b, a, skip_vpush_var = tok.value, nil, nil, false
       local is_binop = (w=="+" or w=="-" or w=="*" or w=="/" or w=="=" or w==">" or w=="<" or w=="and" or w=="or" or w=="cat")
       if is_binop or w=="not" then
+        b = table.remove(vstack)
+        a = table.remove(vstack)
         if not (a and (b or w=="not")) then
           if b then vstack[#vstack+1] = b end
           if a then vstack[#vstack+1] = a end
@@ -157,7 +159,8 @@ function compiler:tcode(tokens)
         if #vstack == 0 then flush(); emit(ops["drop"].."\n")
         else table.remove(vstack) end
       elseif w == "!" then
-        local val, idx = b, a
+        local val = table.remove(vstack)
+        local idx = table.remove(vstack)
         if not (idx and val) then
           if val then vstack[#vstack+1] = val end
           if idx then vstack[#vstack+1] = idx end
@@ -166,7 +169,7 @@ function compiler:tcode(tokens)
           lazy_mem[idx.value] = val.value
         else flush(); emit(ops["!"].."\n") end
       elseif w == "@" then
-        local idx = a
+        local idx = table.remove(vstack)
         if not idx then
           flush(); emit(ops["@"].."\n"); skip_vpush_var = true
         elseif idx.kind=="const" and lazy_mem[idx.value] ~= nil then
@@ -177,8 +180,8 @@ function compiler:tcode(tokens)
           vstack[#vstack+1] = {kind="var", value=var}; skip_vpush_var = true
         end
       elseif w == "strin" or w == "numin" or w == "read" then
+        local path = (w == "read" and table.remove(vstack)) or nil
         local var, lua_expr = self:gensym(), nil
-        local path = a
         if w == "strin" then lua_expr = "tostring(io.read())"
         elseif w == "numin" then lua_expr = "tonumber(io.read())"
         elseif w == "read" and path then
