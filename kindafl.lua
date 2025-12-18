@@ -32,7 +32,7 @@ elseif arg[1] == "r" then
       local lua_code = comp:tcode(pp)
       if dbg then print(lua_code) end
       load(lua_code)()
-      if dbg then load('d()')() end
+      load('d()')()
     end
   end
 else

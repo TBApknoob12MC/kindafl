@@ -2,8 +2,8 @@ local op_table,compiler = require('op_table'), {}
 compiler.__index = compiler
 
 function compiler:gensym()
-  self.gensym_counter = self.gensym_counter + 1
-  return "_t"..self.gensym_counter
+  local idx = #self.vstack + 1
+  return "tmp["..idx.."]"
 end
 
 function compiler:new()
@@ -46,7 +46,27 @@ function compiler:preprocess(code)
         elseif ch == "\\" then buff[#buff+1] = code:sub(i+1,i+1); i = i + 2
         else buff[#buff+1] = ch; i = i + 1 end
       end
-      self.macro_list[name] = self:preprocess(table.concat(buff))
+      self.macro_list[name] = table.concat(buff)
+    elseif code:sub(i,i+1) == "::" then
+      i = i + 2 ; local buff = {}
+      while i <= n do
+        local ch = code:sub(i,i)
+        if ch == " " or ch == ";" then break end
+        if ch == "\\" then buff[#buff+1] = code:sub(i+1,i+1); i = i + 2
+        else buff[#buff+1] = ch; i = i + 1 end
+      end
+      local name = table.concat(buff); buff = {}
+      while i <= n and code:sub(i,i):match("%s") and code:sub(i,i) ~= ";" do i = i + 1 end
+      while i <= n do
+        local ch = code:sub(i,i)
+        if ch == ";" then i = i + 1; break
+        elseif ch == "\\" then buff[#buff+1] = code:sub(i+1,i+1); i = i + 2
+        else buff[#buff+1] = ch; i = i + 1 end
+      end
+      local ctr,y = 0, self.macro_list[name]; for x in string.gmatch(table.concat(buff),'%S+') do
+        ctr = ctr+1; y = y:gsub('#'..ctr,x)
+      end
+      self:flatten(tokens,self:preprocess(y))
     elseif code:sub(i,i+1) == 's"' then
       i = i + 2
       local buff = {}
@@ -74,7 +94,7 @@ function compiler:preprocess(code)
       local buff = code:sub(start, i-1)
       if tonumber(buff) then emit({type="number", value=tonumber(buff)})
       elseif op_table.op[buff] then emit({type="word", value=buff})
-      elseif self.macro_list[buff] then self:flatten(tokens,self.macro_list[buff])
+      elseif self.macro_list[buff] then self:flatten(tokens,self:preprocess(macro_list[buff]))
       else emit({type="x", value=buff}) end
     end
   end
@@ -100,9 +120,9 @@ function compiler:flush()
 end
 
 function compiler:emit_local_var(lua_expr,is_fun)
-  self:flush() ; local var = self:gensym()
+  local var = self:gensym()
   if is_fun then self.out[#self.out+1] = lua_expr
-  else self.out[#self.out+1] = "local "..var.." = "..lua_expr.."\n" 
+  else self.out[#self.out+1] = var.." = "..lua_expr.."\n" 
   self.vstack[#self.vstack+1] = {kind="var", value=var} end
 end
 
@@ -153,13 +173,16 @@ function compiler:tcode(tokens)
         else
           self:process_op(w, a, b)
         end
-      elseif w == "dup" or w == "swap" or w == "drop" then
+      elseif w == "dup" or w == "over" or w == "swap" or w == "drop" then
         local optimized = false
         if w == "dup" and #self.vstack >= 1 then
           self.vstack[#self.vstack+1] = self.vstack[#self.vstack]
           optimized = true
+        elseif w == "over" and #self.vstack >= 2 then
+          self.vstack[#self.vstack+1] = self.vstack[#self.vstack - 1]
+          optimized = true
         elseif w == "swap" and #self.vstack >= 2 then
-          self.vstack[#self.vstack], self.vstack[#self.vstack-1] = self.vstack[#self.vstack-1], self.vstack[#self.vstack]
+          self.vstack[#self.vstack], self.vstack[#self.vstack - 1] = self.vstack[#self.vstack - 1], self.vstack[#self.vstack]
           optimized = true
         elseif w == "drop" and #self.vstack >= 1 then
           table.remove(self.vstack)
@@ -167,6 +190,15 @@ function compiler:tcode(tokens)
         end
         if not optimized then
           self:flush(); self.out[#self.out+1] = ops[w].."\n"
+        end
+      elseif w == "do" then
+        local b, a = table.remove(self.vstack), table.remove(self.vstack)
+        if not (a and b) then
+          if b then self.vstack[#self.vstack+1] = b end
+          if a then self.vstack[#self.vstack+1] = a end
+          self:flush(); self.out[#self.out+1] = ops["do"].."\n"
+        elseif a.kind=="const" and b.kind=="const" then
+          self.out[#self.out+1] = "for i = "..tostring(b.value)..", "..tostring(a.value - 1).." do\n"
         end
       elseif w == "!" then
         local idx,val = table.remove(self.vstack), table.remove(self.vstack)
@@ -186,7 +218,7 @@ function compiler:tcode(tokens)
           self.vstack[#self.vstack+1] = {kind="const", value = self.lazy_mem[idx.value]}; skip_vpush_var = true
         else
           local var = self:gensym()
-          self.out[#self.out+1] = "local "..var.." = mem["..materialize(idx).."]\n"
+          self.out[#self.out+1] = var.." = mem["..materialize(idx).."]\n"
           self.vstack[#self.vstack+1] = {kind="var", value=var}; skip_vpush_var = true
         end
       elseif w == "strin" or w == "numin" or w == "read" then

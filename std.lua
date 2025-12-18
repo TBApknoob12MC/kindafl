@@ -1,4 +1,4 @@
-stack, mem, lib, f = {}, {}, {}, {}
+stack, mem, lib,tmp, f = {}, {}, {}, {}, {}
 mem[1] = 1
 function dump(do_mem)
   local d = ""
@@ -9,7 +9,8 @@ function dump(do_mem)
     end
     d = table.concat(acc,", ")
   else
-    d = table.concat(stack," ")
+    local acc = {} ; for i = 1, #stack do table.insert(acc,tostring(stack[i])) end
+    d = table.concat(acc," ")
   end
   table.insert(stack, d)
 end
