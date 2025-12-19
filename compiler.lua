@@ -2,12 +2,12 @@ local op_table,compiler = require('op_table'), {}
 compiler.__index = compiler
 
 function compiler:gensym()
-  local idx = #self.vstack + 1
-  return "tmp["..idx.."]"
+  self.gensym_counter = self.gensym_counter + 1
+  return "tmp["..self.gensym_counter.."]"
 end
 
 function compiler:new()
-  return setmetatable({ imported_modules = {}, gensym_counter = 0, macro_list = {}, out = {}, vstack = {}, lazy_mem = {} }, compiler)
+  return setmetatable({ imported_modules = {}, gensym_counter = 0, macro_list = {}, out = {}, vstack = {}, block_depth = 0}, compiler)
 end
 
 function compiler:flatten(into, list)
@@ -67,6 +67,41 @@ function compiler:preprocess(code)
         ctr = ctr+1; y = y:gsub('#'..ctr,x)
       end
       self:flatten(tokens,self:preprocess(y))
+    elseif code:sub(i, i+1) == "x?" then
+      i = i + 3
+      while i <= n and code:sub(i,i):match("%s") do i = i + 1 end
+      local start = i
+      while i <= n and not code:sub(i,i):match("%s") do i = i + 1 end
+      local macro_name = code:sub(start, i-1)
+      local content_start, depth, else_pos = i, 1, nil
+      while i <= n do
+        if code:sub(i, i+1) == "x?" then depth = depth + 1
+        elseif code:sub(i, i+1) == "fi" then depth = depth - 1
+        elseif code:sub(i, i+1) == "el" and depth == 1 then else_pos = i end
+        if depth == 0 then break end
+        i = i + 1
+      end
+      local full_content = code:sub(content_start, i-1); i = i + 2 ; print(full_content)
+      local true_part, false_part = full_content, ""
+      if else_pos then local rel_else = else_pos - content_start ;true_part,false_part = full_content:sub(1, rel_else - 1), full_content:sub(rel_else + 2) end
+      if self.macro_list[macro_name] then self:flatten(tokens, self:preprocess(true_part))
+      else self:flatten(tokens, self:preprocess(false_part)) end
+    elseif code:sub(i,i+1) == "r:" then
+      i = i + 2
+      local buff = {}
+      while i <= n do
+        local ch = code:sub(i,i)
+        if ch == "\\" then buff[#buff+1] = code:sub(i+1,i+1); i = i + 2
+        elseif ch == ";" then i = i + 1; break
+        else buff[#buff+1] = ch; i = i + 1 end
+      end
+      local lua_code, env = table.concat(buff), {self = self,print = print,table = table,string = string,math = math,io = io,tonumber = tonumber,tostring = tostring,pairs = pairs,ipairs = ipairs}
+      local chunk, err = load(lua_code, "run", "t", env)
+      if chunk then local status, result = pcall(chunk)
+        if status and type(result) == "string" then self:flatten(tokens, self:preprocess(result))
+        else print("Runtime Error in run: " .. tostring(result)) end
+      else print("Syntax Error in run: " .. tostring(err))
+      end
     elseif code:sub(i,i+1) == 's"' then
       i = i + 2
       local buff = {}
@@ -94,7 +129,7 @@ function compiler:preprocess(code)
       local buff = code:sub(start, i-1)
       if tonumber(buff) then emit({type="number", value=tonumber(buff)})
       elseif op_table.op[buff] then emit({type="word", value=buff})
-      elseif self.macro_list[buff] then self:flatten(tokens,self:preprocess(macro_list[buff]))
+      elseif self.macro_list[buff] then self:flatten(tokens,self:preprocess(self.macro_list[buff]))
       else emit({type="x", value=buff}) end
     end
   end
@@ -109,6 +144,7 @@ local function materialize(expr)
     local left, right = materialize(expr.left), expr.right and materialize(expr.right) or ""
     if expr.op == ".." then return string.format("(%s .. %s)", left, right)
     elseif expr.op == "not" then return string.format("(not %s)", left)
+    elseif expr.op == "=" then return string.format("(%s == %s)",left, right)
     else return string.format("(%s %s %s)", left, expr.op, right) end
   end
   error("can't materialize expr : " .. tostring(expr.kind))
@@ -116,7 +152,7 @@ end
 
 function compiler:flush()
   for _,expr in ipairs(self.vstack) do self.out[#self.out+1] = "push(stack, " .. materialize(expr) .. ")\n" end
-  self.vstack = {}
+  self.vstack, self.gensym_counter = {}, 0
 end
 
 function compiler:emit_local_var(lua_expr,is_fun)
@@ -149,7 +185,7 @@ function compiler:process_op(w, a, b)
 end
 
 function compiler:tcode(tokens)
-  self.out, self.vstack, self.lazy_mem = {}, {}, {}
+  self.out, self.vstack = {}, {}
   local ops = op_table.op
   local is_binop = function(w)
     return (w=="+" or w=="-" or w=="*" or w=="/" or w=="=" or w==">" or w=="<" or w=="and" or w=="or" or w=="cat")
@@ -192,34 +228,46 @@ function compiler:tcode(tokens)
           self:flush(); self.out[#self.out+1] = ops[w].."\n"
         end
       elseif w == "do" then
+        self.block_depth = self.block_depth + 1
         local b, a = table.remove(self.vstack), table.remove(self.vstack)
         if not (a and b) then
           if b then self.vstack[#self.vstack+1] = b end
           if a then self.vstack[#self.vstack+1] = a end
           self:flush(); self.out[#self.out+1] = ops["do"].."\n"
         elseif a.kind=="const" and b.kind=="const" then
-          self.out[#self.out+1] = "for i = "..tostring(b.value)..", "..tostring(a.value - 1).." do\n"
+          self:flush(); self.out[#self.out+1] = "for i = "..tostring(b.value)..", "..tostring(a.value - 1).." do\n"
         end
+      elseif w == "if" then
+        self.block_depth = self.block_depth + 1
+        local a = table.remove(self.vstack)
+        if not a then
+          self:flush(); self.out[#self.out+1] = ops["if"].."\n"
+        else
+          self:flush(); self.out[#self.out+1] = "if "..materialize(a).." then\n"
+        end
+      elseif w == "else" then
+        self.block_depth = self.block_depth+1
+        self:flush(); self.out[#self.out+1] = "else\n"
+      elseif w == ";" then
+        self:flush(); self.out[#self.out+1] = "end\n"
+        self.block_depth = self.block_depth - 1
       elseif w == "!" then
-        local idx,val = table.remove(self.vstack), table.remove(self.vstack)
+        local idx, val = table.remove(self.vstack), table.remove(self.vstack)
         if not (idx and val) then
           if val then self.vstack[#self.vstack+1] = val end
           if idx then self.vstack[#self.vstack+1] = idx end
           self:flush(); self.out[#self.out+1] = ops["!"].."\n"
-        elseif idx.kind=="const" and val.kind=="const" then
-          self.lazy_mem[idx.value] = val.value
-          self.out[#self.out+1] = "mem["..idx.value.."] = "..val.value.."\n"
-        else self:flush(); self.out[#self.out+1] = ops["!"].."\n" end
+        else
+          self.out[#self.out+1] = "mem["..materialize(idx).."] = "..materialize(val).."\n"
+        end
       elseif w == "@" then
         local idx = table.remove(self.vstack)
         if not idx then
-          self:flush(); self.out[#self.out+1] = ops["@"].."\n"; skip_vpush_var = true
-        elseif idx.kind=="const" and self.lazy_mem[idx.value] ~= nil then
-          self.vstack[#self.vstack+1] = {kind="const", value = self.lazy_mem[idx.value]}; skip_vpush_var = true
+          self:flush(); self.out[#self.out+1] = ops["@"].."\n"
         else
           local var = self:gensym()
           self.out[#self.out+1] = var.." = mem["..materialize(idx).."]\n"
-          self.vstack[#self.vstack+1] = {kind="var", value=var}; skip_vpush_var = true
+          self.vstack[#self.vstack+1] = {kind="var", value=var}
         end
       elseif w == "strin" or w == "numin" or w == "read" then
         local path = (w == "read" and table.remove(self.vstack)) or nil
@@ -229,7 +277,7 @@ function compiler:tcode(tokens)
           local lua_expr = string.format("(function(r) local t = r:read('*a'); r:close(); return t end)(io.open(%s,'r'))", materialize(path))
           self:emit_local_var(lua_expr)
         elseif w == "read" and not path then
-          self:flush(); self.out[#self.out+1] = ops["read"].."\n"; skip_vpush_var = true
+          self:flush(); self.out[#self.out+1] = ops["read"].."\n"
         end
       elseif ops[w] then
         self:flush(); self.out[#self.out+1] = ops[w].."\n"
