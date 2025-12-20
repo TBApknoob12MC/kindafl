@@ -53,6 +53,7 @@ At the REPL, type your kindafl code line by line. Enter `q` to quit.
 
 ## Kindafl Language 
 
+For more information, check out the [docs](https://github.com/TBApknoob12MC/kindafl/wiki)
 
 ```
 l"std" (include lua file std.lua : should be included at top of the main source file)
