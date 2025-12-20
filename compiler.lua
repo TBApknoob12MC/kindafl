@@ -26,7 +26,7 @@ function compiler:preprocess(code)
       i = i + 1
       if not self.imported_modules[name] then
         self.imported_modules[name] = true
-        local f = assert(io.open(name .. ".kindafl","r"), "Module "..name.." not found")
+        local f = assert(io.open(name .. ".kfl","r"), "Module "..name.." not found")
         local text = f:read("*a"); f:close()
         self:flatten(tokens, self:preprocess(text))
       end
