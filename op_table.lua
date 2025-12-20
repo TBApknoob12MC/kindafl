@@ -28,6 +28,7 @@ return {
       ["else"] = "else",
       [":"] = "function ",
       [";"] = "end",
+      ["exec"] = "pop(stack)()",
       ["!"] = "mem[pop(stack)] = pop(stack)",
       ["@"] = "push(stack, mem[pop(stack)])",
       ["read"] = "local r = io.open(pop(stack),'r')\npush(stack,r:read('*a'))\nr:close()",

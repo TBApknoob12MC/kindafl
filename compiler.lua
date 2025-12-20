@@ -102,6 +102,16 @@ function compiler:preprocess(code)
         else print("Runtime Error in run: " .. tostring(result)) end
       else print("Syntax Error in run: " .. tostring(err))
       end
+    elseif code:sub(i,i) == "[" then
+      i = i + 1 ; local start, depth = i, 1
+      while i <= n and depth > 0 do
+        local ch = code:sub(i,i)
+        if ch == "[" then depth = depth + 1 
+        elseif ch == "]" then depth = depth - 1 end
+        if depth > 0 then i = i + 1 end
+      end
+      local block = code:sub(start,i - 1); i = i + 1
+      emit({type="quot", value=self:preprocess(block)})
     elseif code:sub(i,i+1) == 's"' then
       i = i + 2
       local buff = {}
@@ -284,6 +294,9 @@ function compiler:tcode(tokens)
       else
         self:emit_local_var(w .. "()\n")
       end
+    elseif tok.type == "quot" then
+      local sub_comp = self:new(); local inner = sub_comp:tcode(tok.value)
+      self:flush(); self:emit_local_var("function()\n"..inner.."end")
     elseif tok.type == "x" then
       self:emit_local_var(tok.value .. "()\n",((tok_idx - 1 > 0 ) and tokens[tok_idx - 1].value == ":") or nil)
     else
