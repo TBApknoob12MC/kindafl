@@ -16,7 +16,7 @@ Maintaining full compatibility with forth wasn't, isn't and won't be any objecti
 - **Stack-based execution:** Operates on values via stack manipulation.
 - **Arithmetic and logical ops:** `+`, `-`, `*`, `/`, `and`, `or`, `not`, `=`, `<`, `>`, etc.
 - **Memory table:** Store/load values via `!` and `@`.
-- **Strings and lua code:** Push strings (`s" hello "`) and include lua code from files (`l" filename "`).
+- **Strings and lua code:** Push strings (`s"hello"`) and include lua code from files (`l"filename"`).
 - **Module import:** `m"modulename"` includes other `.kindafl` scripts.
 - **IO:** Read/write files, input from user.
 - **REPL:** Interactive shell to play with the language.
