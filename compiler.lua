@@ -95,7 +95,7 @@ function compiler:preprocess(code)
         if depth == 0 then break end
         i = i + 1
       end
-      local full_content = code:sub(content_start, i-1); i = i + 2 ; print(full_content)
+      local full_content = code:sub(content_start, i-1); i = i + 2
       local true_part, false_part = full_content, ""
       if else_pos then local rel_else = else_pos - content_start ;true_part,false_part = full_content:sub(1, rel_else - 1), full_content:sub(rel_else + 2) end
       if self.macro_list[macro_name] then self:flatten(tokens, self:preprocess(true_part))
@@ -212,7 +212,7 @@ function compiler:tcode(tokens)
   self.out, self.vstack = {}, {}
   local ops = op_table.op
   local is_binop = function(w)
-    return (w=="+" or w=="-" or w=="*" or w=="/" or w=="=" or w==">" or w=="<" or w=="and" or w=="or" or w=="cat")
+    return (w=="+" or w=="-" or w=="*" or w=="/" or w == "%" or w=="=" or w==">" or w=="<" or w=="and" or w=="or" or w=="cat")
   end
   for tok_idx,tok in ipairs(tokens) do
     if tok.type == "string" then self.vstack[#self.vstack+1] = {kind="string", value=tok.value}
