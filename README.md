@@ -69,6 +69,9 @@ m"module" (include another kfl file)
 a_lua_function (call lua functions)
 x:a_macro 1 2 ; (macros)
 a_macro + (substitutes a_macro with its contents 1 2 and adds them)
+x:macro_with_args #1 #2 + ; (macros with arguments)
+::macro_with_args 5 | 6 || (call macro_with_args with arguments 5 and 6 -> substitutes with 5 6 +)
+r: return "1 2 +" ; (run lua code at compile time and compile its return value)
 ```
 
 ---

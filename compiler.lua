@@ -48,25 +48,39 @@ function compiler:preprocess(code)
       end
       self.macro_list[name] = table.concat(buff)
     elseif code:sub(i,i+1) == "::" then
-      i = i + 2 ; local buff = {}
+      i = i + 2
+      while i <= n and code:sub(i,i):match("%s") do i = i + 1 end
+      local name_start = i
+      while i <= n and not code:sub(i,i):match("%s") and code:sub(i,i) ~= "|" do i = i + 1 end
+      local mname = code:sub(name_start, i-1)
+      local args = {}
+      local curr = {}
       while i <= n do
-        local ch = code:sub(i,i)
-        if ch == " " or ch == ";" then break end
-        if ch == "\\" then buff[#buff+1] = code:sub(i+1,i+1); i = i + 2
-        else buff[#buff+1] = ch; i = i + 1 end
+        if code:sub(i, i+1) == "||" then
+            table.insert(args, table.concat(curr))
+            i = i + 2
+            break
+        elseif code:sub(i, i) == "\\" then
+          table.insert(curr, code:sub(i+1, i+1))
+          i = i + 2
+        elseif code:sub(i, i) == "|" then
+          table.insert(args, table.concat(curr))
+          curr = {}
+          i = i + 1
+        else
+          table.insert(curr, code:sub(i, i))
+          i = i + 1
+        end
       end
-      local name = table.concat(buff); buff = {}
-      while i <= n and code:sub(i,i):match("%s") and code:sub(i,i) ~= ";" do i = i + 1 end
-      while i <= n do
-        local ch = code:sub(i,i)
-        if ch == ";" then i = i + 1; break
-        elseif ch == "\\" then buff[#buff+1] = code:sub(i+1,i+1); i = i + 2
-        else buff[#buff+1] = ch; i = i + 1 end
-      end
-      local ctr,y = 0, self.macro_list[name]; for x in string.gmatch(table.concat(buff),'%S+') do
-        ctr = ctr+1; y = y:gsub('#'..ctr,x)
-      end
-      self:flatten(tokens,self:preprocess(y))
+      local tmpl = self.macro_list[mname]
+      if tmpl then
+        local new = tmpl
+        for idx = #args, 1, -1 do
+          local val = args[idx]:match("^%s*(.-)%s*$")
+          new = new:gsub("#" .. idx, function() return val end)
+        end
+        self:flatten(tokens, self:preprocess(new))
+      else error("macro " .. mname .. " not defined") end
     elseif code:sub(i, i+1) == "x?" then
       i = i + 3
       while i <= n and code:sub(i,i):match("%s") do i = i + 1 end
