@@ -22,21 +22,29 @@ elseif arg[1] == "r" then
     inp:close()
     local lua_code = comp:tcode(pp)
     local chunk, err = load(lua_code)
-    if chunk then chunk() else print("error in compiled code: "..err) end
+    if chunk then 
+      local status, runtime_err = pcall(chunk)
+      if status then 
+        if type(d) == "function" then d() end
+      else print("runtime error: "..tostring(runtime_err)) end
+    else print("error in compiled code: "..tostring(err)) end
   end
   while true do
     local repl_inp = io.read()
     if repl_inp == "q" then break 
     elseif repl_inp == "dbg" then dbg = not dbg
+    elseif repl_inp == "clr" then stack = {}
     else
       local pp = comp:preprocess(repl_inp)
       local lua_code = comp:tcode(pp)
       if dbg then print(lua_code) end
       local chunk, err = load(lua_code)
       if chunk then
-        chunk()
+        local status, runtime_err = pcall(chunk)
+        if status then
         if type(d) == "function" then d() end
-      else print("error in compiled code: "..err)
+        else print("runtime error: "..tostring(runtime_err)) end
+      else print("error in compiled code: "..tostring(err))
       end
     end
   end
