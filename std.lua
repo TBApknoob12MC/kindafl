@@ -1,4 +1,4 @@
-stack, mem,var, lib, f = {}, {}, {}, {}
+stack, mem, lib, f = {}, {}, {}, {}
 
 function dump(do_mem)
   local d = ""
@@ -25,12 +25,9 @@ function m()
   print('mem: '..table.remove(stack))
 end
 
-function push(t,v)
-  table.insert(t,v)
-end
-
 function pop(t)
   if #t < 1 then error("stack underflow") end
-  return table.remove(t)
+  local tmp = t[#t]; t[#t] = nil
+  return tmp
 end
 

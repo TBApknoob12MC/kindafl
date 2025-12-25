@@ -7,7 +7,7 @@ function compiler:gensym()
 end
 
 function compiler:new()
-  return setmetatable({ imported_modules = {}, gensym_counter = 0, macro_list = {}, out = {}, vstack = {}, block_depth = 0}, compiler)
+  return setmetatable({ imported_modules = {}, gensym_counter = 0,next_addr = 1, macro_list = {}, out = {}, vstack = {}, block_depth = 0}, compiler)
 end
 
 function compiler:flatten(into, list)
@@ -190,7 +190,7 @@ local function materialize(expr)
 end
 
 function compiler:flush()
-  for _,expr in ipairs(self.vstack) do self.out[#self.out+1] = "push(stack, " .. materialize(expr) .. ")\n" end
+  for _,expr in ipairs(self.vstack) do self.out[#self.out+1] = "stack[#stack+1] = " .. materialize(expr) .. "\n" end
   self.vstack = {}
 end
 

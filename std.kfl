@@ -1,0 +1,4 @@
+l"std"
+x:var r: local addr = self.next_addr
+self.next_addr = self.next_addr + 1
+return "x:#1 "..addr.."\\\;" \; ;
