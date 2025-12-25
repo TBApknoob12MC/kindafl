@@ -1,4 +1,4 @@
-local var = "local b,a = pop(stack), pop(stack)\n"
+local var, three_var = "local b,a = pop(stack), pop(stack)\n","local c,b,a = pop(stack), pop(stack), pop(stack)\n"
 return {
   op = {
       ["+"] = var.."push(stack, a + b )",
@@ -35,7 +35,10 @@ return {
       ["write"] = "local w = io.open(pop(stack),'w')\nw:write(pop(stack))\nw:close()",
       ["strin"] = "push(stack, tostring(io.read()))",
       ["numin"] = "push(stack, tonumber(io.read()))",
-      ["cat"] = var.."push(stack, tostring(a) .. tostring(b))"
+      ["cat"] = var.."push(stack, tostring(a) .. tostring(b))",
+      ["bi"] = three_var.."push(stack,a)\nb()\npush(stack,a)\nc()",
+      ["cond"] = three_var.."if a then b() else c() end",
+      ["times"] = var.."for i=1,a do b() end",
     },
   const_fold = {
     ["+"] = function(a, b) return a + b end,

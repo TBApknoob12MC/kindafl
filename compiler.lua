@@ -3,7 +3,7 @@ compiler.__index = compiler
 
 function compiler:gensym()
   self.gensym_counter = self.gensym_counter + 1
-  return "tmp["..self.gensym_counter.."]"
+  return "tmp_"..self.gensym_counter
 end
 
 function compiler:new()
@@ -116,6 +116,21 @@ function compiler:preprocess(code)
         else print("Runtime Error in run: " .. tostring(result)) end
       else print("Syntax Error in run: " .. tostring(err))
       end
+    elseif code:sub(i, i+1) == "<{" then
+      i = i + 2
+      local start, depth = i, 1
+      while i <= n and depth > 0 do
+        local c2 = code:sub(i, i+1)
+        if c2 == "<{" then depth = depth + 1; i = i + 2
+        elseif c2 == "}>" then depth = depth - 1; i = i + 2 end
+        if depth > 0 then i = i + 1 end
+      end
+      local content = code:sub(start, i-3)
+      local vars, body = content:match("^(.-)%?(.*)$")
+      if not vars then error("Scoped block missing '?' separator") end
+      local vnames = {}
+      for name in vars:gmatch("%S+") do table.insert(vnames, name) end
+      emit({type="scoped_block", vars=vnames, body=self:preprocess(body)})
     elseif code:sub(i,i) == "[" then
       i = i + 1 ; local start, depth = i, 1
       while i <= n and depth > 0 do
@@ -176,7 +191,7 @@ end
 
 function compiler:flush()
   for _,expr in ipairs(self.vstack) do self.out[#self.out+1] = "push(stack, " .. materialize(expr) .. ")\n" end
-  self.vstack, self.gensym_counter = {}, 0
+  self.vstack = {}
 end
 
 function compiler:emit_local_var(lua_expr,is_fun)
@@ -208,8 +223,8 @@ function compiler:process_op(w, a, b)
   return true
 end
 
-function compiler:tcode(tokens)
-  self.out, self.vstack = {}, {}
+function compiler:tcode(tokens,outer_scope)
+  self.out, self.vstack, self.scope = {}, {}, outer_scope or {}
   local ops = op_table.op
   local is_binop = function(w)
     return (w=="+" or w=="-" or w=="*" or w=="/" or w == "%" or w=="=" or w==">" or w=="<" or w=="and" or w=="or" or w=="cat")
@@ -309,10 +324,25 @@ function compiler:tcode(tokens)
         self:emit_local_var(w .. "()\n")
       end
     elseif tok.type == "quot" then
-      local sub_comp = self:new(); local inner = sub_comp:tcode(tok.value)
+      local sub_comp = self:new(); local inner = sub_comp:tcode(tok.value,self.scope)
       self:flush(); self:emit_local_var("function()\n"..inner.."end")
+    elseif tok.type == "scoped_block" then
+      self:flush(); local nscope, header = {}, "do\n"
+      for k,v in pairs(self.scope) do nscope[k] = v end
+      for i=#tok.vars,1,-1 do
+        local name,var_id = tok.vars[i], self:gensym(); nscope[name] = var_id
+        header = header..string.format("local %s = pop(stack)\n",var_id)
+      end
+      local sub_comp = self:new(); local inner = sub_comp:tcode(tok.body,nscope)
+      self.out[#self.out+1] = header..inner.."end\n"
     elseif tok.type == "x" then
-      self:emit_local_var(tok.value .. "()\n",((tok_idx - 1 > 0 ) and tokens[tok_idx - 1].value == ":") or nil)
+      if self.scope[tok.value] then
+        self.vstack[#self.vstack+1] = {kind="var",value=self.scope[tok.value]}
+      elseif tok.value == "rgsc" then
+        self.gensym_counter = 0
+      else
+        self:flush(); self:emit_local_var(tok.value .. "()\n",((tok_idx - 1 > 0 ) and tokens[tok_idx - 1].value == ":") or nil)
+      end
     else
       error("unknown token type: "..tostring(tok.type))
     end

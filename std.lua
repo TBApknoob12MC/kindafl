@@ -1,5 +1,5 @@
-stack, mem, lib,tmp, f = {}, {}, {}, {}, {}
-mem[1] = 1
+stack, mem,var, lib, f = {}, {}, {}, {}
+
 function dump(do_mem)
   local d = ""
   if do_mem then
@@ -34,7 +34,3 @@ function pop(t)
   return table.remove(t)
 end
 
-function nxt()
-mem[1] = mem[1] + 1
-push(stack, mem[1])
-end
