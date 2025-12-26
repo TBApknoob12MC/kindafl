@@ -1,5 +1,6 @@
 l"std"
 x:curry <{ v q ? [ v q exec ] }> ;
+x:comb <{ q1 q2 ? [ q1 exec q2 exec ] }> ;
 x:var r: local addr = self.next_addr
 self.next_addr = self.next_addr + 1
 return "x:#1 "..addr.."\\\;" \; ;
