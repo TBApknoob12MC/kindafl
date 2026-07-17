@@ -1,3 +1,4 @@
+package.path =(arg[0]:match("@?(.*[/\\])") or "./").."?.lua;"..package.path
 local kfl = require('compiler')
 local comp = kfl:new()
 if arg[1] == "c" then

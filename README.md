@@ -10,6 +10,8 @@ Maintaining full compatibility with forth wasn't, isn't and won't be any objecti
 **"one can implement a forth in a weekend"**
  -- a wise man said; and he was right.
 
+For funni, i've made this installable via [prefixell](https://github.com/TBApknoob12MC/prefixell.git), another project of mine.
+
 ---
 
 ## Features

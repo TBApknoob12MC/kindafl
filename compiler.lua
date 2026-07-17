@@ -1,3 +1,4 @@
+package.path =(arg[0]:match("@?(.*[/\\])") or "./").."?.lua;"..package.path
 local op_table,compiler = require('op_table'), {}
 compiler.__index = compiler
 
@@ -26,7 +27,7 @@ function compiler:preprocess(code)
       i = i + 1
       if not self.imported_modules[name] then
         self.imported_modules[name] = true
-        local f = assert(io.open(name .. ".kfl","r"), "Module "..name.." not found")
+        local f = assert(io.open((name == "std" and (arg[0]:match("@?(.*[/\\])") or "./").."std.kfl") or name..".kfl","r"), "Module "..name.." not found")
         local text = f:read("*a"); f:close()
         self:flatten(tokens, self:preprocess(text))
       end
@@ -233,8 +234,7 @@ function compiler:tcode(tokens,outer_scope)
     if tok.type == "string" then self.vstack[#self.vstack+1] = {kind="string", value=tok.value}
     elseif tok.type == "load" then
       self:flush()
-      local path = tok.value .. ".lua"
-      local f = assert(io.open(path,"r"),"Cannot load library: "..path)
+      local f = assert(io.open((tok.value == "std" and (arg[0]:match("@?(.*[/\\])") or "./").."std.lua") or tok.value..".lua","r"),"Cannot load library: "..tok.value..".lua")
       self.out[#self.out+1] = f:read("*a").."\n"; f:close()
     elseif tok.type == "number" then self.vstack[#self.vstack+1] = {kind="const", value=tok.value}
     elseif tok.type == "word" then
