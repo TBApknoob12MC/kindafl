@@ -117,6 +117,25 @@ function compiler:preprocess(code)
         else print("Runtime Error in run: " .. tostring(result)) end
       else print("Syntax Error in run: " .. tostring(err))
       end
+    elseif code:sub(i,i+1) == "d:" then
+      i = i + 2 ; local buff = {}
+      while i <= n do
+        local ch = code:sub(i,i)
+        if ch == " " or ch == ";" then break end
+        if ch == "\\" then buff[#buff+1] = code:sub(i+1,i+1); i = i + 2
+        else buff[#buff+1] = ch; i = i + 1 end
+      end
+      local name = table.concat(buff); buff = {}
+      while i <= n and code:sub(i,i):match("%s") and code:sub(i,i) ~= ";" do i = i + 1 end
+      while i <= n do
+        local ch = code:sub(i,i)
+        if ch == ";" then i = i + 1; break
+        elseif ch == "\\" then buff[#buff+1] = code:sub(i+1,i+1); i = i + 2
+        else buff[#buff+1] = ch; i = i + 1 end
+      end
+      local fun_arg,buff_str = "",table.concat(buff)
+      if buff_str:match("^a") then for i=1,buff_str:sub(2,2),1 do fun_arg = fun_arg..((i==1 and "pop(stack)") or ",pop(stack)") end end
+      op_table.op[name] = "for _,v in ipairs({"..name.."("..fun_arg..")}) do stack[#stack+1]= v end\n"
     elseif code:sub(i, i+1) == "<{" then
       i = i + 2
       local start, depth = i, 1

@@ -39,6 +39,7 @@ return {
       ["bi"] = three_var.."stack[#stack+1] = a\nb()\nstack[#stack+1] = a\nc()",
       ["cond"] = three_var.."if a then b() else c() end",
       ["times"] = var.."for i=1,a do b() end",
+      ["use"] = var.."_G[b] = require(a)"
     },
   const_fold = {
     ["+"] = function(a, b) return a + b end,

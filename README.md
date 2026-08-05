@@ -25,7 +25,7 @@ For funni, i've made this installable via [prefixell](https://github.com/TBApkno
 - **Tiny standard library:** Just enough to make kfl work.
 - **Macros:** Words, but they get replaced with its content at compile time.
 - **Optimized codegen:** Cool stuff for optimized code generation.
-- **lua interop:** Can call lua functions, but one should provide an interface for it to access the stack.
+- **lua interop:** Can call lua functions, but one should provide an interface for it to access the stack. (or just use `d:`)
 ---
 
 ## Usage
